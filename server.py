@@ -3,7 +3,11 @@ import login
 import database
 import os
 import pandas
+import time
+import datetime
 import pickle  # 以list的形式使用TCP发送数据
+
+
 connect_list=[] # 保存连接的客户端
 id_list=[] # 保存客户端的id
 name_list=[] # 保存客户端的用户名
@@ -29,14 +33,14 @@ class sqServer(socketserver.BaseRequestHandler):
             if not data:
                 print('Client disconnected')
                 print('Client address:',self.client_address)
-                i=connect_list.index(self.client_address)
+                print('pre',name_list)
+                i=connect_list.index(self.request)
                 connect_list.pop(i)
-                id_list.pop(i)
                 name_list.pop(i)
+                print('after',name_list)
                 break
 
-            print('Received', data.decode('utf-8'), 'from', self.client_address)
-
+            print('Received', data.decode('utf-8'), 'from', self.client_address,self.request)
 
             # 对数据进行处理
             data=data.decode('utf-8')
@@ -51,9 +55,8 @@ class sqServer(socketserver.BaseRequestHandler):
                 print(user_id,type(user_id))
                 if user_id!=False:
                     print(self.client_address,'登录成功,用户名为：',user_name)
-                    connect_list.append(self.client_address)
+                    connect_list.append(self.request)
                     name_list.append(user_name)
-                    
                     continue
                 else:
                     print(self.client_address,'登录失败')
@@ -89,9 +92,6 @@ class sqServer(socketserver.BaseRequestHandler):
                 print('发送成功')
 
             elif data[0]=='M': # M表示消息
-                data=data[1:]
-                data=data.split(' ')
-                user_id=data[0]
                 if data[1]=='G': # G表示群聊 Group
                     group_id=data[2]
                     data=data[3:]
@@ -101,13 +101,23 @@ class sqServer(socketserver.BaseRequestHandler):
                             print('send success')
                 
                 if data[1]=='P': # P表示私聊 Private
-                    user_id=data[2]
-                    data=data[3:]
-                    if user_id in id_list:
-                        index=id_list.index(user_id)
-                        connect_list[index].sendall(data.encode('utf-8'))
+                    source_name=data[2:].strip().split(' ')[0]
+                    target_name=data[2:].strip().split(' ')[1]
+                    data=data[2:].strip().split(' ')[2:]
+                    # 把data转换成字符串
+                    data=' '.join(data)
+                    if target_name in name_list:  # 对方要是在线的话
+                        print(data,type(data))
+                        print(connect_list[name_list.index(target_name)],type(connect_list[name_list.index(target_name)]))
+                        #print(connect_list[name_list.index(target_name)][0],connect_list[name_list.index(target_name)][1])
                         print('send success')
-
+                        connect_list[name_list.index(target_name)].sendall((source_name+' '+data).encode('utf-8'))
+                        database.save_message(source_name, target_name, data, 'r')
+                        database.save_message(target_name, source_name, data, 's')
+                    else: # 对方要是不在线的话
+                        print('target not online!')
+                        database.save_message(source_name, target_name, data, 'r')
+                        database.save_message(target_name, source_name, data, 's')
             '''群发消息的template
             for i in connect_list:
                 if i==self.request:
