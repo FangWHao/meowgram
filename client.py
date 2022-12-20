@@ -5,14 +5,18 @@ import os
 import time
 import datetime
 from time import sleep
-
+#sock  用于实现登录，接收好友列表等功能
 sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 sock.connect(('localhost', 9000))
 
+#sock1 只用于实现接受消息
+sock1=socket.socket(socket.AF_INET,socket.SOCK_STREAM)
+sock1.connect(('localhost',9000))
 
 user_id = -1
 user_name = ''
 friend_list = []
+message_count = [0]*100  # 消息计数
 
 in_chat = 0  # 0表示未在聊天，1表示在聊天
 chat_with = ' '  # 聊天对象
@@ -20,18 +24,26 @@ chat_with = ' '  # 聊天对象
 # 使用双线程，一个接收，一个发送
 
 
-def recv():
+def recv():  # 接收消息
     while True:
         # try:
-        buf = sock.recv(1024)
-        if not buf:
-            continue
-        
+        buf = b''
+        while True:
+            packet = sock1.recv(1024) #注意，要是消息长度超过1024，会出问题，这里要改进
+            if not packet or len(packet) < 1024:
+                buf += packet
+                break
+            buf += packet
+
         buf = buf.decode('utf-8')
         source_name = buf.strip().split(' ')[0]
         time = buf.strip().split(' ')[1]+' '+buf.strip().split(' ')[2]
         message = buf.strip().split(' ')[3]
-        if in_chat == 0:
+        if in_chat == 0:  # 未在聊天，提醒新消息
+            try:
+                message_count[friend_list.index('f'+source_name)] += 1
+            except:
+                message_count[friend_list.index('g'+source_name)] += 1
             os.system('clear')
             print('-----------------')
             print('好友列表：')
@@ -42,17 +54,19 @@ def recv():
                 else:
                     print('\033[34m'+str(i)+'   ' +
                           friend_list[i][1:]+'\033[0m', end='')
-                # 新消息来的话输出一个红色的感叹号
-                if friend_list[i][1:] == source_name:
-                    print('\033[31m'+'!'+'\033[0m')
+                # 新消息来的话用红色输出数量
+                if message_count[i] != 0:
+                    print('\033[31m'+'  ('+str(message_count[i])+')'+'\033[0m')
                 else:
                     print(' ')
             print('请输入要进行聊天的编号')
-        else:
-            if chat_with == source_name:
-                print('\033[32m'+source_name+'\033[0m'+' '+time+' '+message)
-            else:
-                print('你有一条来自'+'\033[32m'+source_name+'\033[0m'+'的消息')
+        else: # 在聊天
+            if chat_with == source_name: # 如果是正在聊天的对象发来的消息
+                print(time)
+                print('\033[34m'+source_name+': '+message+'\033[0m')
+                #print('\033[32m'+source_name+'\033[0m'+' '+time+' '+message)
+            else: # 如果不是正在聊天的对象发来的消息
+                print('你有一条来自'+'\033[34m'+source_name+'\033[0m'+'的消息')
         # except:
         #    print('服务器已断开连接')
         #    break
@@ -90,6 +104,7 @@ def start_client_login():
         if buf.decode('utf-8') != 'False':
             print('登录成功')
             print('登录成功，您现在正在以用户'+user_name+'的身份进入聊天室')
+            sock1.sendall(("X"+user_name).encode('utf-8')) # 将用户名发送给服务器，服务器将其加入到在线用户列表中
             user_id = int(buf.decode('utf-8'))
             return buf.decode('utf-8')
 
@@ -131,22 +146,28 @@ def get_friend_list():
     for i in range(len(friend_list)):
         if friend_list[i][0] == 'g':
             print('\033[32m'+str(i)+'   '+friend_list[i][1:]+'\033[0m')
-        else:
+        else: 
             print('\033[34m'+str(i)+'   '+friend_list[i][1:]+'\033[0m')
 
 
 def get_history_message(friend_name):
     data_send = 'H'+str(user_name)+' '+str(friend_name)
     sock.sendall(data_send.encode('utf-8'))
-
-    buf = sock.recv(1024)
+    buf=b''
+    while True:
+        packet = sock.recv(1024)
+        if not packet or len(packet) < 1024:
+            buf += packet
+            break
+        buf += packet
     print('历史消息：')
     history_message = pickle.loads(buf)
     # print(history_message)
+    if not history_message:
+        return
     for i in range(len(history_message)):
         recieve_or_send = history_message[i][0]
-        time = history_message[i][1:].strip().split(
-            ' ')[0]+'  '+history_message[i][1:].strip().split(' ')[1]
+        time = history_message[i][1:].strip().split(' ')[0]+'  '+history_message[i][1:].strip().split(' ')[1]
         message = history_message[i][1+len(time):]
         # 绿色为自己发送的消息，蓝色为好友发送的消息
         print(time)
@@ -161,6 +182,7 @@ def send_to_friend(friend_name):
         print('请输入要发送的消息,输入exit退出')
         data_send = input()
         if data_send == 'exit':
+            os.system('clear')
             break
         now = datetime.datetime.now()
         now = now.strftime('%Y-%m-%d %H:%M:%S')
@@ -169,6 +191,19 @@ def send_to_friend(friend_name):
         sock.sendall(data_send.encode('utf-8'))
         print('发送成功')
 
+def send_to_group(group_name):
+    while True:
+        print('请输入要发送的消息,输入exit退出')
+        data_send = input()
+        if data_send == 'exit':
+            os.system('clear')
+            break
+        now = datetime.datetime.now()
+        now = now.strftime('%Y-%m-%d %H:%M:%S')
+        data_send = 'MG'+str(user_name)+' ' + \
+            str(group_name)+' '+now+' '+data_send
+        sock.sendall(data_send.encode('utf-8'))
+        print('发送成功')
 
 '''
 while True:
@@ -216,24 +251,35 @@ if __name__ == '__main__':
 
     # 登录成功后，进入聊天界面
     os.system('clear')
-    print('-----------------')
-
-    # get好友列表和群列表
-    get_friend_list()
     # start_client_chat()
 
     # 开启一个线程，用于接收消息
     t1 = threading.Thread(target=recv)
     t1.start()
 
-    print("请输入要进行聊天的编号")
-    num = int(input())
-    os.system('clear')
-    if friend_list[num][0] == 'f':
-        print('正在与'+friend_list[num][1:]+'聊天')
-        get_history_message(friend_list[num][1:])
-        send_to_friend(friend_list[num][1:])
+    while True:
+        print('-----------------')
+        # get好友列表和群列表
+        get_friend_list()
+        print("请输入要进行聊天的编号")
+        num = int(input())
+        os.system('clear')
+        if friend_list[num][0] == 'f':
+            in_chat = True
+            chat_with = friend_list[num][1:]
+            message_count[num]=0
+            print('正在与'+friend_list[num][1:]+'聊天')
+            get_history_message(friend_list[num][1:])
+            send_to_friend(friend_list[num][1:])
+            print('聊天结束')
+            chat_with = ''
+            in_chat = False
+        else:
+            in_chat = True
+            chat_with = friend_list[num][1:]
+            message_count[num]=0
+            print('正在'+friend_list[num][1:]+'中群聊')
+            get_history_message(friend_list[num][1:])
+            send_to_group(friend_list[num][1:])
+        
 
-    else:
-        print('正在'+friend_list[num][1:]+'中群聊')
-        get_history_message(friend_list[num][1:])
