@@ -4,6 +4,8 @@ import pickle
 import os
 import time
 import datetime
+import readline
+
 from time import sleep
 #sock  用于实现登录，接收好友列表等功能
 sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -36,7 +38,9 @@ def recv():  # 接收消息
             buf += packet
 
         buf = buf.decode('utf-8')
-        print(buf)
+        #print(buf)
+        if buf=='exit':
+            return
         if buf[0]=='P': #私聊
             buf=buf[1:]
             source_name = buf.strip().split(' ')[0]
@@ -63,6 +67,12 @@ def recv():  # 接收消息
                     else:
                         print(' ')
                 print('请输入要进行聊天的编号')
+                print("输入addf添加好友")
+                print("输入addg添加群")
+                print("输入create创建群")
+                print("输入exit退出")
+                print("输入refresh刷新好友列表")
+                print('-----------------')
             else: # 在聊天
                 if chat_with == source_name: # 如果是正在聊天的对象发来的消息
                     print(time)
@@ -70,8 +80,48 @@ def recv():  # 接收消息
                     #print('\033[32m'+source_name+'\033[0m'+' '+time+' '+message)
                 else: # 如果不是正在聊天的对象发来的消息
                     print('你有一条来自'+'\033[34m'+source_name+'\033[0m'+'的消息')
-        else:
-            print(buf)
+        else: #群聊
+            buf=buf[1:]
+            group_name=buf.strip().split(' ')[0]
+            source_name=buf.strip().split(' ')[1]
+            time=buf.strip().split(' ')[2]+' '+buf.strip().split(' ')[3]
+            message=buf.strip().split(' ')[4]
+            if in_chat == 0:  # 未在聊天，提醒新消息
+                try:
+                    message_count[friend_list.index('f'+group_name)] += 1
+                except:
+                    message_count[friend_list.index('g'+group_name)] += 1
+                os.system('clear')
+                print('-----------------')
+                print('好友列表：')
+                for i in range(len(friend_list)):
+                    if friend_list[i][0] == 'g':
+                        print('\033[32m'+str(i)+'   ' +
+                            friend_list[i][1:]+'\033[0m', end='')
+                    else:
+                        print('\033[34m'+str(i)+'   ' +
+                            friend_list[i][1:]+'\033[0m', end='')
+                    # 新消息来的话用红色输出数量
+                    if message_count[i] != 0:
+                        print('\033[31m'+'  ('+str(message_count[i])+')'+'\033[0m')
+                    else:
+                        print(' ')
+                print('请输入要进行聊天的编号')
+                print("输入addf添加好友")
+                print("输入addg添加群")
+                print("输入create创建群")
+                print("输入exit退出")
+                print("输入refresh刷新好友列表")
+                print('-----------------')
+            else: # 在聊天
+                if chat_with == group_name: # 如果是正在聊天的对象发来的消息
+                    print(time)
+                    print('\033[32m'+source_name+': '+message+'\033[0m')
+                    #print('\033[32m'+source_name+'\033[0m'+' '+time+' '+message)
+                else: # 如果不是正在聊天的对象发来的消息
+                    print(source_name+'在群聊'+group_name+'中发来消息')
+                    #print('你有一条在群聊中来自'+'\033[32m'+source_name+'\033[0m'+'的消息')
+
         # except:
         #    print('服务器已断开连接')
         #    break
@@ -104,13 +154,12 @@ def start_client_login():
         sock.sendall(data_send.encode('utf-8'))
 
         buf = sock.recv(1024)
-        print(buf.decode('utf-8'))
+        #print(buf.decode('utf-8'))
 
-        if buf.decode('utf-8') != 'False':
+        if buf.decode('utf-8') =='登录成功':
             print('登录成功')
             print('登录成功，您现在正在以用户'+user_name+'的身份进入聊天室')
             sock1.sendall(("X"+user_name).encode('utf-8')) # 将用户名发送给服务器，服务器将其加入到在线用户列表中
-            user_id = int(buf.decode('utf-8'))
             return buf.decode('utf-8')
 
         else:
@@ -263,6 +312,52 @@ def check_dir():
         print('完成初始化，文件夹完整')
 
 
+def add_friend():
+    print('请输入要添加的好友的用户名')
+    friend_name = input()
+    if 'f'+friend_name in friend_list:
+        print('已经是好友了，按任意键返回')
+        input()
+        return
+
+    data_send = 'AF'+str(user_name)+' '+str(friend_name)
+    sock.sendall(data_send.encode('utf-8'))
+    buf = sock.recv(1024)
+    if buf.decode('utf-8') == '添加成功':
+        print('添加成功')
+        friend_list.append('f'+friend_name)
+    else:
+        print('添加失败')
+
+def add_group():
+    print('请输入要添加的群的群名')
+    group_name = input()
+    if 'g'+group_name in friend_list:
+        print('已经是群成员了，按任意键返回')
+        input()
+        return
+
+    data_send = 'AG'+str(user_name)+' '+str(group_name)
+    sock.sendall(data_send.encode('utf-8'))
+    buf = sock.recv(1024)
+    if buf.decode('utf-8') == '添加成功':
+        print('添加成功')
+        friend_list.append('g'+group_name)
+    else:
+        print('添加失败')
+
+def create_group():
+    print('请输入要创建的群的群名')
+    group_name = input()
+    data_send = 'C'+str(user_name)+' '+str(group_name)
+    sock.sendall(data_send.encode('utf-8'))
+    buf = sock.recv(1024)
+    if buf.decode('utf-8') == '创建成功':
+        print('创建成功')
+        friend_list.append('g'+group_name)
+    else:
+        print('创建失败')
+
 if __name__ == '__main__':
 
     # 登录
@@ -294,11 +389,39 @@ if __name__ == '__main__':
     t1.start()
 
     while True:
+        os.system('clear')
         print('-----------------')
         # get好友列表和群列表
         get_friend_list()
         print("请输入要进行聊天的编号")
-        num = int(input())
+        print("输入addf添加好友")
+        print("输入addg添加群")
+        print("输入create创建群")
+        print("输入exit退出")
+        print("输入refresh刷新好友列表")
+        print('-----------------')
+        num = input()
+
+        if num == 'addf':
+            add_friend()
+            continue
+        if num == 'addg':
+            add_group()
+            continue
+        if num == 'create':
+            create_group()
+            continue
+        if num == 'exit':
+            sock1.sendall('exit'.encode('utf-8'))
+            quit()
+        if num == 'refresh':
+            continue
+        try:
+            num = int(num)
+        except:
+            print('输入错误,按任意键继续')
+            input()
+            continue
         os.system('clear')
         if friend_list[num][0] == 'f':
             in_chat = True

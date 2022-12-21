@@ -24,6 +24,14 @@ group_id_list=group_file.iloc[1].values.tolist()
 group_member_list=group_file.iloc[2:].values.tolist()
 '''
 
+# 初始化一下，建立文件夹data，子目录包含group_history和history
+
+if os.path.exists('./data')==False:
+    os.mkdir('./data')
+if os.path.exists('./data/group_history')==False:
+    os.mkdir('./data/group_history')
+if os.path.exists('./data/history')==False:
+    os.mkdir('./data/history')
 
 class sqServer(socketserver.BaseRequestHandler):
     def handle(self):
@@ -56,21 +64,69 @@ class sqServer(socketserver.BaseRequestHandler):
                 connect_list_chat.append(self.request)
                 print('成功建立聊天socket ',self.request)
 
+            elif data=='exit': # 代表退出登录
+                self.request.sendall('exit'.encode('utf-8'))
+            elif data[0]=='A': # A代表添加朋友/群聊
+                if(data[1]=='F'):  # F代表添加朋友
+                    data=data[2:]
+                    data=data.split(' ')
+                    user_name=data[0]
+                    friend_name=data[1]
+                    print(user_name,'尝试添加好友',friend_name)
+                    if database.add_friend(user_name, friend_name)==True:
+                        self.request.sendall('添加成功'.encode('utf-8'))
+                        print('添加成功')
+                    else :
+                        self.request.sendall('添加失败'.encode('utf-8'))
+                        print('添加失败')
+
+                elif(data[1]=='G'): # G代表添加群聊
+                    data=data[2:]
+                    data=data.split(' ')
+                    user_name=data[0]
+                    group_name=data[1]
+                    print(user_name,'尝试添加群聊',group_name)
+                    if database.add_group(user_name, group_name)==True:
+                        self.request.sendall('添加成功'.encode('utf-8'))
+                        print('添加成功')
+                    else :
+                        self.request.sendall('添加失败'.encode('utf-8'))
+                        print('添加失败')
+
+            elif data[0]=='C': # C代表创建群聊
+                data=data[1:]
+                data=data.split(' ')
+                user_name=data[0]
+                group_name=data[1]
+                print(user_name,'尝试创建群聊',group_name)
+                if database.create_group(user_name, group_name)==True:
+                    self.request.sendall('创建成功'.encode('utf-8'))
+                    print('创建成功')
+                else :
+                    self.request.sendall('创建失败'.encode('utf-8'))
+                    print('创建失败')
+
             elif data[0]=='L': # L表示登录
                 data=data[1:]
                 data=data.split(' ')
                 user_name=data[0]
                 password=data[1]
-                user_id=login.login(user_name, password)
+                is_success=login.login(user_name, password)
                 print(self.client_address,'尝试登录,用户名为：',user_name)
-                self.request.sendall(str(user_id).encode('utf-8'))
-                print(user_id,type(user_id))
-                if user_id!=False:
+                #self.request.sendall(str(user_id).encode('utf-8'))
+                #print(user_id,type(user_id))
+                if is_success==True:
+                    if user_name in name_list:
+                        self.request.sendall('该用户尝试重复登录'.encode('utf-8'))
+                        print(self.client_address,'该用户尝试重复登录')
+                        continue
+                    self.request.sendall('登录成功'.encode('utf-8'))
                     print(self.client_address,'登录成功,用户名为：',user_name)
                     connect_list.append(self.request)
                     name_list.append(user_name)
                     continue
                 else:
+                    self.request.sendall('登录失败'.encode('utf-8'))
                     print(self.client_address,'登录失败')
                     continue
 
@@ -79,10 +135,13 @@ class sqServer(socketserver.BaseRequestHandler):
                 data=data.split(' ')
                 user_name=data[0]
                 password=data[1]
-                login.register(user_name, password)
-                print(self.client_address, '尝试注册,用户名为：',user_name)
-                self.request.sendall('注册成功'.encode('utf-8'))
-
+                if login.register(user_name, password)==True:
+                    print(self.client_address, '尝试注册,用户名为：',user_name)
+                    self.request.sendall('注册成功'.encode('utf-8'))
+                else:
+                    print(self.client_address, '尝试注册,用户名为：',user_name)
+                    self.request.sendall('注册失败'.encode('utf-8'))
+            
             elif data[0]=='F': # Friend来get一下朋友和群聊列表
                 data=data[1:]   
                 data=data.strip()
@@ -122,10 +181,10 @@ class sqServer(socketserver.BaseRequestHandler):
                     print(source_name,'尝试发送群聊消息',gourp_name,data)
                     group_member=database.get_group_member(gourp_name)
                     print('群成员列表：',group_member)
-                    data='G'+data
                     for i in group_member:
                         if i in name_list:
-                            connect_list_chat[name_list.index(i)].sendall(data.encode('utf-8'))
+                            if i!=source_name:
+                                connect_list_chat[name_list.index(i)].sendall(('G'+gourp_name+' '+source_name+' '+data).encode('utf-8'))
                     print('发送成功')
                     database.save_group_message(gourp_name, source_name+' '+data)
                 if data[1]=='P': # P表示私聊 Private

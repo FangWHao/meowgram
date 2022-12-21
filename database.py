@@ -95,6 +95,8 @@ def get_group_history_message(group_name): #格式为“发送者 时间 内容�
             data.append(row)
     print('读取的群聊历史消息为：')
     print(data)
+    if not data:
+        return []
     return data[0]
 
 def save_group_message(group_name,message): 
@@ -135,6 +137,124 @@ def get_group_member(group_name):
             return data[i][1:]
 
     return []
+
+def add_friend(user_name,friend_name):
+    # 使用csv函数来读取csv文件
+    data=[]
+    #如果没有朋友列表，就创建一个空的csv文件
+    if os.path.exists('./data/friend_list.csv')==False:
+        file=open('./data/friend_list.csv','w',encoding='gb18030')
+        file.close()
+    with open('./data/friend_list.csv','r',encoding='gb18030') as f:
+        reader=csv.reader(f)
+        for row in reader:
+            data.append(row)
+    is_exist_friend=-1
+    is_exist_user=-1
+    # 判断一下要加的用户是否存在
+    friend_name='f'+friend_name
+    for i in range(len(data)):
+        if data[i][0]==friend_name:
+            is_exist_friend=i
+        if data[i][0]==user_name:
+            is_exist_user=i
+    file1=open('./data/user.txt', 'r')
+    user_list=file1.readlines()
+    file1.close()
+    flag=False
+    for i in range(len(user_list)):
+        if user_list[i].split(',')[0]==friend_name[1:]:
+            flag=True
+            break
+    if flag==False:
+        return False
+    if is_exist_user==-1:
+        data.append([user_name,friend_name])
+    else:
+        data[is_exist_user].append(friend_name)
+    data[is_exist_friend].append('f'+user_name)
+    with open('./data/friend_list.csv','w',encoding='gb18030') as f:
+        writer=csv.writer(f)
+        writer.writerows(data)
+    return True
+    
+
+def add_group(user_name,group_name):
+    # 使用csv函数来读取csv文件
+    data=[]
+    #如果没有群列表，就创建一个空的csv文件
+    if os.path.exists('./data/group_member.csv')==False:
+        file=open('./data/group_member.csv','w',encoding='gb18030')
+        file.close()
+    with open('./data/group_member.csv','r',encoding='gb18030') as f:
+        reader=csv.reader(f)
+        for row in reader:
+            data.append(row)
+    is_exist=False
+    for i in range(len(data)):
+        if data[i][0]==group_name:
+            is_exist=True
+            data[i].append(user_name)
+            data1=[]
+            if os.path.exists('./data/friend_list.csv')==False:
+                file1=open('./data/friend_list.csv','w',encoding='gb18030')
+                file1.close()
+            with open('./data/friend_list.csv','r',encoding='gb18030') as f:
+                reader=csv.reader(f)
+                for row in reader:
+                    data1.append(row)
+            for j in range(len(data1)):
+                if data1[j][0]==user_name:
+                    data1[j].append('g'+group_name)
+                    break
+            break
+    with open('./data/group_member.csv','w',encoding='gb18030') as f:
+        writer=csv.writer(f)
+        writer.writerows(data)
+    with open('./data/friend_list.csv','w',encoding='gb18030') as f:
+        writer=csv.writer(f)
+        writer.writerows(data1)
+    return is_exist  #如果群不存在，就返回False
+
+def create_group(user_name,group_name):
+    # 使用csv函数来读取csv文件
+    data=[]
+    #如果没有群列表，就创建一个空的csv文件
+    if os.path.exists('./data/group_member.csv')==False:
+        file=open('./data/group_member.csv','w',encoding='gb18030')
+        file.close()
+    with open('./data/group_member.csv','r',encoding='gb18030') as f:
+        reader=csv.reader(f)
+        for row in reader:
+            data.append(row)
+    is_exist=True
+    for i in range(len(data)):
+        if data[i][0]==group_name:
+            is_exist=False
+            break
+    if is_exist==True:
+        data.append([group_name,user_name])
+    with open('./data/group_member.csv','w',encoding='gb18030') as f:
+        writer=csv.writer(f)
+        writer.writerows(data)
+
+    data1=[]
+    if os.path.exists('./data/friend_list.csv')==False:
+        file1=open('./data/friend_list.csv','w',encoding='gb18030')
+        file1.close()
+    with open('./data/friend_list.csv','r',encoding='gb18030') as f:
+        reader=csv.reader(f)
+        for row in reader:
+            data1.append(row)
+    for j in range(len(data1)):
+        if data1[j][0]==user_name:
+            data1[j].append('g'+group_name)
+            break
+    with open('./data/friend_list.csv','w',encoding='gb18030') as f:
+        writer=csv.writer(f)
+        writer.writerows(data1)
+
+    return is_exist 
     '''
     try: #如果没有历史消息，就创建一个空的csv文件
         df=pandas.read_csv('./data/history/'+friend_name+'.csv',encoding='utf-8',index_col=0)
