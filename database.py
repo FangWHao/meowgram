@@ -95,7 +95,7 @@ def get_group_history_message(group_name): #格式为“发送者 时间 内容�
             data.append(row)
     print('读取的群聊历史消息为：')
     print(data)
-    return data
+    return data[0]
 
 def save_group_message(group_name,message): 
     # 使用csv函数来读取csv文件
@@ -108,8 +108,10 @@ def save_group_message(group_name,message):
         reader=csv.reader(f)
         for row in reader:
             data.append(row)
-
-    data[0].append(message)
+    if not data:
+        data.append([message])
+    else:
+        data[0].append(message)
 
     with open('./data/group_history/'+group_name+'.csv','w',encoding='gb18030') as f:
         writer=csv.writer(f)

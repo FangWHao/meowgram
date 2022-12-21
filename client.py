@@ -36,37 +36,42 @@ def recv():  # 接收消息
             buf += packet
 
         buf = buf.decode('utf-8')
-        source_name = buf.strip().split(' ')[0]
-        time = buf.strip().split(' ')[1]+' '+buf.strip().split(' ')[2]
-        message = buf.strip().split(' ')[3]
-        if in_chat == 0:  # 未在聊天，提醒新消息
-            try:
-                message_count[friend_list.index('f'+source_name)] += 1
-            except:
-                message_count[friend_list.index('g'+source_name)] += 1
-            os.system('clear')
-            print('-----------------')
-            print('好友列表：')
-            for i in range(len(friend_list)):
-                if friend_list[i][0] == 'g':
-                    print('\033[32m'+str(i)+'   ' +
-                          friend_list[i][1:]+'\033[0m', end='')
-                else:
-                    print('\033[34m'+str(i)+'   ' +
-                          friend_list[i][1:]+'\033[0m', end='')
-                # 新消息来的话用红色输出数量
-                if message_count[i] != 0:
-                    print('\033[31m'+'  ('+str(message_count[i])+')'+'\033[0m')
-                else:
-                    print(' ')
-            print('请输入要进行聊天的编号')
-        else: # 在聊天
-            if chat_with == source_name: # 如果是正在聊天的对象发来的消息
-                print(time)
-                print('\033[34m'+source_name+': '+message+'\033[0m')
-                #print('\033[32m'+source_name+'\033[0m'+' '+time+' '+message)
-            else: # 如果不是正在聊天的对象发来的消息
-                print('你有一条来自'+'\033[34m'+source_name+'\033[0m'+'的消息')
+        print(buf)
+        if buf[0]=='P': #私聊
+            buf=buf[1:]
+            source_name = buf.strip().split(' ')[0]
+            time = buf.strip().split(' ')[1]+' '+buf.strip().split(' ')[2]
+            message = buf.strip().split(' ')[3]
+            if in_chat == 0:  # 未在聊天，提醒新消息
+                try:
+                    message_count[friend_list.index('f'+source_name)] += 1
+                except:
+                    message_count[friend_list.index('g'+source_name)] += 1
+                os.system('clear')
+                print('-----------------')
+                print('好友列表：')
+                for i in range(len(friend_list)):
+                    if friend_list[i][0] == 'g':
+                        print('\033[32m'+str(i)+'   ' +
+                            friend_list[i][1:]+'\033[0m', end='')
+                    else:
+                        print('\033[34m'+str(i)+'   ' +
+                            friend_list[i][1:]+'\033[0m', end='')
+                    # 新消息来的话用红色输出数量
+                    if message_count[i] != 0:
+                        print('\033[31m'+'  ('+str(message_count[i])+')'+'\033[0m')
+                    else:
+                        print(' ')
+                print('请输入要进行聊天的编号')
+            else: # 在聊天
+                if chat_with == source_name: # 如果是正在聊天的对象发来的消息
+                    print(time)
+                    print('\033[34m'+source_name+': '+message+'\033[0m')
+                    #print('\033[32m'+source_name+'\033[0m'+' '+time+' '+message)
+                else: # 如果不是正在聊天的对象发来的消息
+                    print('你有一条来自'+'\033[34m'+source_name+'\033[0m'+'的消息')
+        else:
+            print(buf)
         # except:
         #    print('服务器已断开连接')
         #    break
@@ -143,15 +148,18 @@ def get_friend_list():
     # print(friend_list)
     # 输出fiend_list，f代表私聊，g代表群聊
     # f使用蓝色输出，g使用绿色输出
-    for i in range(len(friend_list)):
-        if friend_list[i][0] == 'g':
-            print('\033[32m'+str(i)+'   '+friend_list[i][1:]+'\033[0m')
-        else: 
-            print('\033[34m'+str(i)+'   '+friend_list[i][1:]+'\033[0m')
+    if not friend_list:
+        print('您还没有好友')
+    else:   
+        for i in range(len(friend_list)):
+            if friend_list[i][0] == 'g':
+                print('\033[32m'+str(i)+'   '+friend_list[i][1:]+'\033[0m')
+            else: 
+                print('\033[34m'+str(i)+'   '+friend_list[i][1:]+'\033[0m')
 
 
 def get_history_message(friend_name):
-    data_send = 'H'+str(user_name)+' '+str(friend_name)
+    data_send = 'HP'+str(user_name)+' '+str(friend_name)
     sock.sendall(data_send.encode('utf-8'))
     buf=b''
     while True:
@@ -175,6 +183,34 @@ def get_history_message(friend_name):
             print('\033[32m'+user_name+': '+message+'\033[0m')
         else:
             print('\033[34m'+friend_name+': '+message+'\033[0m')
+
+def get_group_history_message(group_name):
+    data_send = 'HG'+str(user_name)+' '+str(group_name)
+    sock.sendall(data_send.encode('utf-8'))
+    buf=b''
+    while True:
+        packet = sock.recv(1024)
+        if not packet or len(packet) < 1024:
+            buf += packet
+            break
+        buf += packet
+    print('历史消息：')
+    history_message = pickle.loads(buf)
+    # print(history_message)
+    if not history_message:
+        return
+    
+    print(history_message)
+    for i in range(len(history_message)):
+        source = history_message[i].strip().split(' ')[0]
+        time=history_message[i].strip().split(' ')[1]+'  '+history_message[i].strip().split(' ')[2]
+        message = history_message[i][1+len(source)+len(time):]
+        # 绿色为自己发送的消息，蓝色为好友发送的消息
+        print(time)
+        if source == user_name:
+            print('\033[32m'+user_name+': '+message+'\033[0m')
+        else:
+            print('\033[34m'+source+': '+message+'\033[0m')
 
 
 def send_to_friend(friend_name):
@@ -279,7 +315,10 @@ if __name__ == '__main__':
             chat_with = friend_list[num][1:]
             message_count[num]=0
             print('正在'+friend_list[num][1:]+'中群聊')
-            get_history_message(friend_list[num][1:])
+            get_group_history_message(friend_list[num][1:])
             send_to_group(friend_list[num][1:])
+            print('聊天结束')
+            chat_with = ''
+            in_chat = False
         
 

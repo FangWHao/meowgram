@@ -95,13 +95,22 @@ class sqServer(socketserver.BaseRequestHandler):
                 print('发送成功')
 
             elif data[0]=='H': # H代表历史消息
-                source_name=data[1:].strip().split(' ')[0]
-                target_name=data[1:].strip().split(' ')[1]
-                print(source_name,'尝试获取',target_name,'的历史消息')
-                history_message=database.get_history_message(source_name, target_name)
-                history_message_data=pickle.dumps(history_message)
-                self.request.sendall(history_message_data)
-                print('发送成功')
+                if data[1]=='P': # P代表Private
+                    source_name=data[2:].strip().split(' ')[0]
+                    target_name=data[2:].strip().split(' ')[1]
+                    print(source_name,'尝试获取',target_name,'的历史消息')
+                    history_message=database.get_history_message(source_name, target_name)
+                    history_message_data=pickle.dumps(history_message)
+                    self.request.sendall(history_message_data)
+                    print('发送成功')
+                elif data[1]=='G': # G代表Group
+                    source_name=data[2:].strip().split(' ')[0]
+                    group_name=data[2:].strip().split(' ')[1]
+                    print(source_name,'尝试获取',group_name,'的历史消息')
+                    history_message=database.get_group_history_message(group_name)
+                    history_message_data=pickle.dumps(history_message)
+                    self.request.sendall(history_message_data)
+                    print('发送成功')
 
             elif data[0]=='M': # M表示消息
                 if data[1]=='G': # G表示群聊 Group
@@ -113,11 +122,12 @@ class sqServer(socketserver.BaseRequestHandler):
                     print(source_name,'尝试发送群聊消息',gourp_name,data)
                     group_member=database.get_group_member(gourp_name)
                     print('群成员列表：',group_member)
+                    data='G'+data
                     for i in group_member:
                         if i in name_list:
-                            connect_list[name_list.index(i)].sendall(data.encode('utf-8'))
+                            connect_list_chat[name_list.index(i)].sendall(data.encode('utf-8'))
                     print('发送成功')
-                    database.save_message(gourp_name, source_name+' '+data)
+                    database.save_group_message(gourp_name, source_name+' '+data)
                 if data[1]=='P': # P表示私聊 Private
                     source_name=data[2:].strip().split(' ')[0]
                     target_name=data[2:].strip().split(' ')[1]
@@ -129,7 +139,7 @@ class sqServer(socketserver.BaseRequestHandler):
                         print(connect_list[name_list.index(target_name)],type(connect_list[name_list.index(target_name)]))
                         #print(connect_list[name_list.index(target_name)][0],connect_list[name_list.index(target_name)][1])
                         print('send success')
-                        connect_list_chat[name_list.index(target_name)].sendall((source_name+' '+data).encode('utf-8'))
+                        connect_list_chat[name_list.index(target_name)].sendall(('P'+source_name+' '+data).encode('utf-8'))
                         database.save_message(source_name, target_name, data, 'r')
                         database.save_message(target_name, source_name, data, 's')
                     else: # 对方要是不在线的话
