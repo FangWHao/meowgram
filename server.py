@@ -2,7 +2,6 @@ import socketserver
 import login
 import database
 import os
-import pandas
 import time
 import datetime
 import pickle  # 以list的形式使用TCP发送数据
