@@ -28,17 +28,15 @@ chat_with = ' '  # 聊天对象
 
 def recv():  # 接收消息
     while True:
-        # try:
         buf = b''
         while True:
-            packet = sock1.recv(1024) #注意，要是消息长度超过1024，会出问题，这里要改进
+            packet = sock1.recv(1024) 
             if not packet or len(packet) < 1024:
                 buf += packet
                 break
             buf += packet
 
         buf = buf.decode('utf-8')
-        #print(buf)
         if buf=='exit':
             return
         if buf[0]=='P': #私聊
@@ -79,7 +77,7 @@ def recv():  # 接收消息
                     print('\033[34m'+source_name+': '+message+'\033[0m')
                     #print('\033[32m'+source_name+'\033[0m'+' '+time+' '+message)
                 else: # 如果不是正在聊天的对象发来的消息
-                    print('你有一条来自'+'\033[34m'+source_name+'\033[0m'+'的消息')
+                    print('你有来自'+'\033[34m'+source_name+'\033[0m'+'的消息')
         else: #群聊
             buf=buf[1:]
             group_name=buf.strip().split(' ')[0]
@@ -117,14 +115,8 @@ def recv():  # 接收消息
                 if chat_with == group_name: # 如果是正在聊天的对象发来的消息
                     print(time)
                     print('\033[32m'+source_name+': '+message+'\033[0m')
-                    #print('\033[32m'+source_name+'\033[0m'+' '+time+' '+message)
                 else: # 如果不是正在聊天的对象发来的消息
-                    print(source_name+'在群聊'+group_name+'中发来消息')
-                    #print('你有一条在群聊中来自'+'\033[32m'+source_name+'\033[0m'+'的消息')
-
-        # except:
-        #    print('服务器已断开连接')
-        #    break
+                    print(source_name+'在群聊'+group_name+'中发来消息')    
 
 
 def send():
@@ -289,19 +281,6 @@ def send_to_group(group_name):
             str(group_name)+' '+now+' '+data_send
         sock.sendall(data_send.encode('utf-8'))
         print('发送成功')
-
-'''
-while True:
-    data_send=input('请输入：')
-    data_send=str(user_id)+' '+data_send
-    sock.sendall(data_send.encode('utf-8'))
-
-    buf=sock.recv(1024)
-    print(buf.decode('utf-8'))
-
-sock.close()
-'''
-
 
 def check_dir():
     folder = os.path.exists('data')

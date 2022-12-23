@@ -14,14 +14,6 @@ name_list=[] # 保存客户端的用户名
 i=0
 
 group_file_name='./data/group.csv'
-'''
-group_file=pandas.read_csv(group_file_name)
-
-# group.csv 中第一行是群名字，第二行是群id，第三行之后是群成员的id
-group_name_list=group_file.iloc[0].values.tolist()
-group_id_list=group_file.iloc[1].values.tolist()
-group_member_list=group_file.iloc[2:].values.tolist()
-'''
 
 # 初始化一下，建立文件夹data，子目录包含group_history和history
 
@@ -186,7 +178,7 @@ class sqServer(socketserver.BaseRequestHandler):
                                 connect_list_chat[name_list.index(i)].sendall(('G'+gourp_name+' '+source_name+' '+data).encode('utf-8'))
                     print('发送成功')
                     database.save_group_message(gourp_name, source_name+' '+data)
-                if data[1]=='P': # P表示私聊 Private
+                if data[1]=='P': # P表示私聊
                     source_name=data[2:].strip().split(' ')[0]
                     target_name=data[2:].strip().split(' ')[1]
                     data=data[2:].strip().split(' ')[2:]
@@ -195,7 +187,6 @@ class sqServer(socketserver.BaseRequestHandler):
                     if target_name in name_list:  # 对方要是在线的话
                         print(data,type(data))
                         print(connect_list[name_list.index(target_name)],type(connect_list[name_list.index(target_name)]))
-                        #print(connect_list[name_list.index(target_name)][0],connect_list[name_list.index(target_name)][1])
                         print('send success')
                         connect_list_chat[name_list.index(target_name)].sendall(('P'+source_name+' '+data).encode('utf-8'))
                         database.save_message(source_name, target_name, data, 'r')
@@ -204,25 +195,6 @@ class sqServer(socketserver.BaseRequestHandler):
                         print('target not online!')
                         database.save_message(source_name, target_name, data, 'r')
                         database.save_message(target_name, source_name, data, 's')
-            '''群发消息的template
-            for i in connect_list:
-                if i==self.request:
-                    print("发送成功")
-                    continue
-                print('send to', i)
-                print(type(data))
-                data_send="来自"+str(self.client_address)+"的消息："+data.decode('utf-8')+"\r\n"
-                try:
-                    i.sendall(data_send.encode('utf-8'))
-                    print('send success')
-                except:
-                    print('send fail')
-                    connect_list.remove(i)
-                    id_list.remove(i)
-                    name_list.remove(i)
-                    print('removed', i)
-                    continue
-            #self.request.sendall(data)
-            '''
+            
 server=socketserver.ThreadingTCPServer(('localhost', 9000), sqServer)
 server.serve_forever()

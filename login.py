@@ -30,7 +30,6 @@ def login(user_name, password):
     for line in file:
         line = line.strip()
         if line == user_name+','+password:
-            # print('用户id为：'+str(user_id))
             return True
     return False
 
