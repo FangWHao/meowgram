@@ -43,8 +43,9 @@ def register(user_name, password):
         for line in f:
             line = line.strip()
             data.append(line)
+    print(data)
     for i in data:
-        if user_name in i:
+        if user_name ==2 i.split(',')[0]:
             print('该用户已经注册')
             return False
             

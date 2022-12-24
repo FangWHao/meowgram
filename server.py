@@ -162,6 +162,7 @@ class sqServer(socketserver.BaseRequestHandler):
                 data=data.split(' ')
                 user_name=data[0]
                 password=data[1]
+                print(user_name,'  ',password)
                 if login.register(user_name, password)==True:
                     print(self.client_address, '尝试注册,用户名为：',user_name)
                     self.request.sendall('注册成功'.encode('utf-8'))
