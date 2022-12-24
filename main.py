@@ -8,12 +8,6 @@ import readline
 
 from time import sleep
 #sock  用于实现登录，接收好友列表等功能
-sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-sock.connect(('localhost', 9000))
-
-#sock1 只用于实现接受消息
-sock1=socket.socket(socket.AF_INET,socket.SOCK_STREAM)
-sock1.connect(('localhost',9000))
 
 user_id = -1
 user_name = ''
@@ -78,7 +72,7 @@ def recv():  # 接收消息
                     #print('\033[32m'+source_name+'\033[0m'+' '+time+' '+message)
                 else: # 如果不是正在聊天的对象发来的消息
                     print('你有来自'+'\033[34m'+source_name+'\033[0m'+'的消息')
-        else: #群聊
+        elif buf[0]=='G': #群聊
             buf=buf[1:]
             group_name=buf.strip().split(' ')[0]
             source_name=buf.strip().split(' ')[1]
@@ -117,6 +111,9 @@ def recv():  # 接收消息
                     print('\033[32m'+source_name+': '+message+'\033[0m')
                 else: # 如果不是正在聊天的对象发来的消息
                     print(source_name+'在群聊'+group_name+'中发来消息')    
+
+        else:
+            print(buf[1:])
 
 
 def send():
@@ -241,7 +238,6 @@ def get_group_history_message(group_name):
     if not history_message:
         return
     
-    print(history_message)
     for i in range(len(history_message)):
         source = history_message[i].strip().split(' ')[0]
         time=history_message[i].strip().split(' ')[1]+'  '+history_message[i].strip().split(' ')[2]
@@ -273,6 +269,8 @@ def send_to_group(group_name):
         print('请输入要发送的消息,输入exit退出')
         data_send = input()
         if data_send == 'exit':
+            data_send = 'EG'+str(user_name)+' '+str(group_name)
+            sock.sendall(data_send.encode('utf-8'))
             os.system('clear')
             break
         now = datetime.datetime.now()
@@ -292,9 +290,10 @@ def check_dir():
 
 
 def add_friend():
+    global friend_list
     print('请输入要添加的好友的用户名')
     friend_name = input()
-    if 'f'+friend_name in friend_list:
+    if not friend_list is None and 'f'+friend_name in friend_list:
         print('已经是好友了，按任意键返回')
         input()
         return
@@ -304,28 +303,41 @@ def add_friend():
     buf = sock.recv(1024)
     if buf.decode('utf-8') == '添加成功':
         print('添加成功')
+        if friend_list is None:
+            friend_list = []
         friend_list.append('f'+friend_name)
     else:
         print('添加失败')
+    
+    print('按任意键返回')
+    input()
+
 
 def add_group():
+    global friend_list
     print('请输入要添加的群的群名')
     group_name = input()
-    if 'g'+group_name in friend_list:
+    tmp='g'+group_name
+    if not friend_list is None and tmp in friend_list:
         print('已经是群成员了，按任意键返回')
         input()
-        return
-
+        return False
     data_send = 'AG'+str(user_name)+' '+str(group_name)
     sock.sendall(data_send.encode('utf-8'))
     buf = sock.recv(1024)
     if buf.decode('utf-8') == '添加成功':
         print('添加成功')
+        if friend_list is None:
+            friend_list = []
         friend_list.append('g'+group_name)
     else:
         print('添加失败')
+    
+    print('按任意键返回')
+    input()
 
 def create_group():
+    global friend_list
     print('请输入要创建的群的群名')
     group_name = input()
     data_send = 'C'+str(user_name)+' '+str(group_name)
@@ -333,94 +345,114 @@ def create_group():
     buf = sock.recv(1024)
     if buf.decode('utf-8') == '创建成功':
         print('创建成功')
+        if friend_list is None:
+            friend_list = []
         friend_list.append('g'+group_name)
     else:
         print('创建失败')
 
 if __name__ == '__main__':
 
-    # 登录
-    os.system('clear')
-    print('-----------------')
-    print('欢迎使用本系统')
-    print('-----------------')
-    print('输入1进行登录，输入2进行注册')
-    print('-----------------')
-
-    choice = input('请输入：')
-    if choice == '1':
-        start_client_login()
-    elif choice == '2':
-        start_client_register()
-
-        start_client_login()
-    else:
-        print('输入错误，按任意键退出')
-        input()
-        exit(0)
-
-    # 登录成功后，进入聊天界面
-    os.system('clear')
-    # start_client_chat()
-
-    # 开启一个线程，用于接收消息
-    t1 = threading.Thread(target=recv)
-    t1.start()
-
     while True:
-        os.system('clear')
-        print('-----------------')
-        # get好友列表和群列表
-        get_friend_list()
-        print("请输入要进行聊天的编号")
-        print("输入addf添加好友")
-        print("输入addg添加群")
-        print("输入create创建群")
-        print("输入exit退出")
-        print("输入refresh刷新好友列表")
-        print('-----------------')
-        num = input()
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.connect(('localhost', 9000))
 
-        if num == 'addf':
-            add_friend()
-            continue
-        if num == 'addg':
-            add_group()
-            continue
-        if num == 'create':
-            create_group()
-            continue
-        if num == 'exit':
-            sock1.sendall('exit'.encode('utf-8'))
-            quit()
-        if num == 'refresh':
-            continue
-        try:
-            num = int(num)
-        except:
-            print('输入错误,按任意键继续')
-            input()
-            continue
+        #sock1 只用于实现接受消息
+        sock1=socket.socket(socket.AF_INET,socket.SOCK_STREAM)
+        sock1.connect(('localhost',9000))
+
+        # 登录
         os.system('clear')
-        if friend_list[num][0] == 'f':
-            in_chat = True
-            chat_with = friend_list[num][1:]
-            message_count[num]=0
-            print('正在与'+friend_list[num][1:]+'聊天')
-            get_history_message(friend_list[num][1:])
-            send_to_friend(friend_list[num][1:])
-            print('聊天结束')
-            chat_with = ''
-            in_chat = False
+        print('-----------------')
+        print('欢迎使用本系统')
+        print('-----------------')
+        print('输入1进行登录，输入2进行注册，输入exit退出程序')
+        print('-----------------')
+
+        choice = input('请输入：')
+        if choice == '1':
+            start_client_login()
+        elif choice == '2':
+            start_client_register()
+
+            start_client_login()
+        elif choice == 'exit':
+            sock1.close()
+            sock.close()
+            exit(0)
         else:
-            in_chat = True
-            chat_with = friend_list[num][1:]
-            message_count[num]=0
-            print('正在'+friend_list[num][1:]+'中群聊')
-            get_group_history_message(friend_list[num][1:])
-            send_to_group(friend_list[num][1:])
-            print('聊天结束')
-            chat_with = ''
-            in_chat = False
-        
+            print('输入错误，按任意键退出')
+            input()
+            exit(0)
 
+        # 登录成功后，进入聊天界面
+        os.system('clear')
+        # start_client_chat()
+
+        # 开启一个线程，用于接收消息
+        t1 = threading.Thread(target=recv)
+        t1.start()
+
+        while True:
+            os.system('clear')
+            print('-----------------')
+            # get好友列表和群列表
+            get_friend_list()
+            print("请输入要进行聊天的编号")
+            print("输入addf添加好友")
+            print("输入addg添加群")
+            print("输入create创建群")
+            print("输入exit退出")
+            print("输入refresh刷新好友列表")
+            print('-----------------')
+            num = input()
+
+            if num == 'addf':
+                add_friend()
+                continue
+            if num == 'addg':
+                add_group()
+                continue
+            if num == 'create':
+                create_group()
+                continue
+            if num == 'exit':  #logout
+                sock1.sendall(('exit'+user_name).encode('utf-8'))
+                sock.close()
+                sock1.close()
+                break
+
+            if num == 'refresh':
+                continue
+            try:
+                num = int(num)
+                if num < 0 or num >= len(friend_list):
+                    print('输入错误,按任意键继续')
+                    input()
+                    continue
+            except:
+                print('输入错误,按任意键继续')
+                input()
+                continue
+            os.system('clear')
+            if friend_list[num][0] == 'f':
+                in_chat = True
+                chat_with = friend_list[num][1:]
+                message_count[num]=0
+                print('正在与'+friend_list[num][1:]+'聊天')
+                get_history_message(friend_list[num][1:])
+                send_to_friend(friend_list[num][1:])
+                print('聊天结束')
+                chat_with = ''
+                in_chat = False
+            else:
+                in_chat = True
+                chat_with = friend_list[num][1:]
+                message_count[num]=0
+                print('正在'+friend_list[num][1:]+'中群聊')
+                get_group_history_message(friend_list[num][1:])
+                send_to_group(friend_list[num][1:])
+                print('聊天结束')
+                chat_with = ''
+                in_chat = False
+            

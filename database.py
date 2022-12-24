@@ -132,28 +132,43 @@ def add_friend(user_name,friend_name):
             data.append(row)
     is_exist_friend=-1
     is_exist_user=-1
-    # 判断一下要加的用户是否存在
-    friend_name='f'+friend_name
+    # 判断一下要加的用户是否已经是好友了
+    
     for i in range(len(data)):
-        if data[i][0]==friend_name:
-            is_exist_friend=i
         if data[i][0]==user_name:
             is_exist_user=i
+        if data[i][0]==friend_name:
+            is_exist_friend=i
+
+    friend_name='f'+friend_name
+
+    if is_exist_user!=-1:
+        for i in range(len(data[is_exist_user])):
+            if data[is_exist_user][i]==friend_name:
+                return False # 已经是好友了
+
     file1=open('./data/user.txt', 'r')
     user_list=file1.readlines()
     file1.close()
     flag=False
     for i in range(len(user_list)):
         if user_list[i].split(',')[0]==friend_name[1:]:
-            flag=True
+            flag=True # 找到了这个用户
             break
-    if flag==False:
+
+    if flag==False: # 没有这个用户
         return False
-    if is_exist_user==-1:
+
+    if is_exist_user==-1: # 还没有这个用户的好友列表
         data.append([user_name,friend_name])
-    else:
-        data[is_exist_user].append(friend_name)
-    data[is_exist_friend].append('f'+user_name)
+    else: # 已经有这个用户的好友列表了
+        data[is_exist_user].append(friend_name) # 添加好友
+
+    if is_exist_friend==-1: # 还没有这个用户的好友列表
+        data.append([friend_name[1:],'f'+user_name])
+    else: # 已经有这个用户的好友列表了
+        data[is_exist_friend].append('f'+user_name) # 添加好友
+
     with open('./data/friend_list.csv','w',encoding='gb18030') as f:
         writer=csv.writer(f)
         writer.writerows(data)
@@ -163,6 +178,7 @@ def add_friend(user_name,friend_name):
 def add_group(user_name,group_name):
     # 使用csv函数来读取csv文件
     data=[]
+    data1=[]
     #如果没有群列表，就创建一个空的csv文件
     if os.path.exists('./data/group_member.csv')==False:
         file=open('./data/group_member.csv','w',encoding='gb18030')
@@ -171,19 +187,21 @@ def add_group(user_name,group_name):
         reader=csv.reader(f)
         for row in reader:
             data.append(row)
+
+    if os.path.exists('./data/friend_list.csv')==False:
+        file1=open('./data/friend_list.csv','w',encoding='gb18030')
+        file1.close()
+    with open('./data/friend_list.csv','r',encoding='gb18030') as f:
+        reader=csv.reader(f)
+        for row in reader:
+            data1.append(row)
+
     is_exist=False
+    
     for i in range(len(data)):
         if data[i][0]==group_name:
             is_exist=True
             data[i].append(user_name)
-            data1=[]
-            if os.path.exists('./data/friend_list.csv')==False:
-                file1=open('./data/friend_list.csv','w',encoding='gb18030')
-                file1.close()
-            with open('./data/friend_list.csv','r',encoding='gb18030') as f:
-                reader=csv.reader(f)
-                for row in reader:
-                    data1.append(row)
             for j in range(len(data1)):
                 if data1[j][0]==user_name:
                     data1[j].append('g'+group_name)

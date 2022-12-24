@@ -13,6 +13,9 @@ id_list=[] # 保存客户端的id
 name_list=[] # 保存客户端的用户名
 i=0
 
+# 定义一个二维数组，记录每个会议室内有哪些人
+group_list=[]
+
 group_file_name='./data/group.csv'
 
 # 初始化一下，建立文件夹data，子目录包含group_history和history
@@ -25,6 +28,11 @@ if os.path.exists('./data/history')==False:
     os.mkdir('./data/history')
 
 class sqServer(socketserver.BaseRequestHandler):
+    global connect_list
+    global connect_list_chat
+    global id_list
+    global name_list
+    global group_list
     def handle(self):
         print('Got connection from', self.client_address)
 
@@ -55,8 +63,36 @@ class sqServer(socketserver.BaseRequestHandler):
                 connect_list_chat.append(self.request)
                 print('成功建立聊天socket ',self.request)
 
-            elif data=='exit': # 代表退出登录
+            elif data[0:4]=='exit': # 代表退出登录
                 self.request.sendall('exit'.encode('utf-8'))
+                print('Client disconnected')
+                '''
+                source_name=data[4:]
+                i=name_list.index(source_name)
+                connect_list.pop(i)
+                name_list.pop(i)
+                connect_list_chat.pop(i)
+                '''
+
+            elif data[0]=='E':
+                if data[1]=='G': # EG代表退出群聊
+                    data=data[2:]
+                    data=data.split(' ')
+                    user_name=data[0]
+                    group_name=data[1]
+                    print(user_name,'尝试退出群聊',group_name)
+                    for i in range(len(group_list)):
+                        if group_list[i][0]==group_name:
+                            group_list[i].remove(user_name)
+                            break
+                    
+                    # 通知所有人
+                    for i in range(len(group_list)):
+                        if group_list[i][0]==group_name:
+                            for j in range(1,len(group_list[i])):
+                                namelist=" ".join(group_list[i][1:])
+                                connect_list_chat[name_list.index(group_list[i][j])].sendall(('X'+user_name+'退出群聊,当前群聊成员有:'+namelist).encode('utf-8'))
+
             elif data[0]=='A': # A代表添加朋友/群聊
                 if(data[1]=='F'):  # F代表添加朋友
                     data=data[2:]
@@ -161,6 +197,29 @@ class sqServer(socketserver.BaseRequestHandler):
                     history_message_data=pickle.dumps(history_message)
                     self.request.sendall(history_message_data)
                     print('发送成功')
+
+                    # 当某人进入聊天室的时候，向所有聊天室的人都发送一条信息
+                    # 通知所有人，有人进入聊天室，并将其名字记录下来
+                    flag=False
+                    for i in group_list:
+                        if i[0]==group_name:
+                            flag=True
+                            if source_name not in i:
+                                i.append(source_name)
+                                break
+                    if not group_list or not flag:
+                        group_list.append([group_name,source_name])
+
+
+                    print(group_list)
+
+                    for j in group_list:
+                        if j[0]==group_name:
+                            for i in j[1:]:
+                                print(i)
+                                namelist=" ".join(j[1:])
+                                connect_list_chat[name_list.index(i)].sendall(('X'+source_name+'进入了聊天室,目前聊天室内有'+namelist).encode('utf-8'))
+                        
 
             elif data[0]=='M': # M表示消息
                 if data[1]=='G': # G表示群聊 Group
